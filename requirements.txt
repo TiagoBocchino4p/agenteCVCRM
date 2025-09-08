@@ -1,0 +1,17 @@
+# Dependências MÍNIMAS - Agente PowerBI CVDW
+# APENAS 5 bibliotecas essenciais
+
+# Interface web
+streamlit>=1.28.0
+
+# HTTP requests para API CVDW
+requests>=2.31.0
+
+# Manipulação de dados
+pandas>=2.0.0
+
+# Visualizações
+plotly>=5.17.0
+
+# Configuração de ambiente
+python-dotenv>=1.0.0

@@ -1,0 +1,100 @@
+# AGENTE POWERBI - GITIGNORE
+
+# CREDENCIAIS E DADOS SENSÍVEIS (CRÍTICO)
+.env
+*.env
+.env.local
+.env.production
+secrets.json
+config/credentials.json
+
+# AMBIENTES VIRTUAIS
+venv/
+venv_clean/
+.venv/
+env/
+ENV/
+
+# CACHE E TEMPORÁRIOS PYTHON
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# STREAMLIT
+.streamlit/
+*.log
+
+# JUPYTER NOTEBOOKS
+.ipynb_checkpoints
+
+# PYTEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE E EDITORES
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# SISTEMA OPERACIONAL
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# DADOS E BACKUPS
+data/
+backups/
+*.db
+*.sqlite
+*.sqlite3
+
+# LOGS E DEBUG
+logs/
+*.log
+debug.log
+error.log
+
+# ARQUIVOS TEMPORÁRIOS
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# DOCUMENTAÇÃO GERADA
+docs/_build/
+
+# NODE (se houver frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
