@@ -279,7 +279,34 @@ agente-powerbi/
 
 **SISTEMA TOTALMENTE OTIMIZADO E FUNCIONANDO EM PRODUÇÃO**
 
-**Versão**: 5.0.0 - SISTEMA OTIMIZADO E LIMPO  
-**Data**: 2025-08-27  
-**Status**: ✅ Produção - Sistema funcional + Otimizado + Documentado  
+**Versão**: 5.1.0 - DASHBOARD FUNCIONAL COM RATE LIMIT  
+**Data**: 2025-09-09  
+**Status**: ✅ Produção - Dashboard funcionando + Rate limit tratado + Backup criado  
 **Achievement**: De projeto caótico para sistema enterprise-ready
+
+---
+
+## 🔄 ATUALIZAÇÃO 09/09/2025
+
+### **Situação Encontrada:**
+- Dashboard final com delays muito longos (connector_fixed com 60s+ delays)
+- Rate limit ativo na API (HTTP 429) por excesso de requisições
+- Múltiplos processos background rodando desnecessariamente
+
+### **Soluções Implementadas:**
+- ✅ **Dashboard Simple**: Versão leve com tratamento de rate limit (porta 8500)
+- ✅ **Backup Completo**: Clone do projeto (agente-powerbi-backup-20250909)
+- ✅ **Limpeza Estrutural**: Arquivos redundantes removidos
+- ✅ **Tratamento HTTP 429**: Interface explica rate limit + botão retry
+
+### **Status Atual:**
+- **API**: Online mas com rate limit temporário (esperado)
+- **Dashboard**: http://localhost:8500 funcionando com tratamento inteligente
+- **Estrutura**: Organizada e limpa
+- **Documentação**: SESSION_LOG_20250909.md criado
+
+### **Próximos Passos:**
+1. Aguardar rate limit passar (alguns minutos)
+2. Testar busca dados setembro/2025 
+3. Otimizar dashboard_final.py para ser mais rápido
+4. Commit final das alterações
