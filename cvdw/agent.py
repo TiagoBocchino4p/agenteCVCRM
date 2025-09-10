@@ -1,17 +1,18 @@
 """
 Agente IA CVDW - Interface inteligente para análise de dados
-Processa consultas em linguagem natural
+Processa consultas em linguagem natural com Ollama/Llama
 """
 import re
 from typing import Dict, List, Any
 from datetime import datetime
 from .connector import CVDWConnector, create_connector
+from .llama_integration import create_ollama_integration
 
 class CVDWAgent:
     """Agente IA para análise inteligente de dados CVDW"""
     
     def __init__(self, email: str = None, token: str = None):
-        """Inicializa agente com conector CVDW"""
+        """Inicializa agente com conector CVDW e integração Llama"""
         
         try:
             self.connector = create_connector(email, token)
@@ -19,10 +20,23 @@ class CVDWAgent:
             self.status = self._test_initial_connection()
             
         except Exception as e:
-            print(f"[AGENT] Erro na inicialização: {str(e)}")
+            print(f"[AGENT] Erro na inicialização do connector: {str(e)}")
             self.online_mode = False
             self.connector = None
             self.status = {"status": "error", "message": str(e)}
+        
+        # Inicializa integração Ollama/Llama
+        try:
+            self.llama = create_ollama_integration()
+            self.llama_available = self.llama.available
+            if self.llama_available:
+                print("[AGENT] Integração Llama ativa - respostas melhoradas")
+            else:
+                print("[AGENT] Llama indisponível - funcionando modo básico")
+        except Exception as e:
+            print(f"[AGENT] Aviso - Llama não disponível: {str(e)}")
+            self.llama = None
+            self.llama_available = False
     
     def _test_initial_connection(self) -> Dict[str, Any]:
         """Testa conexão inicial"""
@@ -78,14 +92,23 @@ class CVDWAgent:
             return f"ERRO interno: {str(e)}"
     
     def _classify_query(self, query: str) -> str:
-        """Classifica o tipo de consulta"""
+        """Classifica o tipo de consulta com IA se disponível"""
         
+        # Usa Llama se disponível para classificação mais inteligente
+        if self.llama_available and self.llama:
+            try:
+                classification = self.llama.classify_query_intent(query)
+                print(f"[AGENT] Classificação {classification['source']}: {classification['category']}")
+                return classification["category"]
+            except Exception as e:
+                print(f"[AGENT] Erro na classificação IA: {str(e)} - usando fallback")
+        
+        # Classificação básica (fallback)
         query_lower = query.lower()
         
-        # Padrões de classificação
         if any(word in query_lower for word in ["quantos", "numero", "total"]):
             return "QUANTITATIVO"
-        elif any(word in query_lower for word in ["origem", "origem", "canal"]):
+        elif any(word in query_lower for word in ["origem", "canal"]):
             return "ORIGENS"
         elif any(word in query_lower for word in ["situacao", "status", "performance"]):
             return "PERFORMANCE"
@@ -111,58 +134,68 @@ class CVDWAgent:
             return 200   # Análise padrão
     
     def _generate_response(self, query: str, query_type: str, data: Dict, insights: List[str]) -> str:
-        """Gera resposta formatada em linguagem natural"""
+        """Gera resposta formatada em linguagem natural com IA"""
         
         leads = data["leads"]
         total_coletados = data["total_coletados"]
         total_disponivel = data["metadata"]["total_disponivel"]
         
-        # Cabeçalho baseado no tipo
-        header = f"[{query_type}] Análise - Dados CVDW Reais"
-        
-        # Corpo da resposta
-        response_parts = [
-            header,
+        # Resposta básica
+        basic_response_parts = [
+            f"[{query_type}] Análise - Dados CVDW Reais",
             "",
             f"Leads analisados: {total_coletados:,}",
             f"Total na base: {total_disponivel:,}",
             ""
         ]
         
-        # Insights gerados
+        # Insights básicos
         if insights:
-            response_parts.append("Principais insights:")
-            for insight in insights[:5]:  # Máximo 5 insights
-                response_parts.append(f"• {insight}")
-            response_parts.append("")
+            basic_response_parts.append("Principais insights:")
+            for insight in insights[:5]:
+                basic_response_parts.append(f"• {insight}")
+            basic_response_parts.append("")
         
-        # Amostra de dados (primeiros 3 leads)
+        # Amostra de dados
         if leads:
-            response_parts.append("Amostra dos dados:")
+            basic_response_parts.append("Amostra dos dados:")
             for i, lead in enumerate(leads[:3], 1):
                 nome = lead.get("nome", "N/A")
                 situacao = lead.get("situacao", "N/A") 
                 origem = lead.get("origem_nome", lead.get("origem", "N/A"))
                 data_cad = lead.get("data_cad", "N/A")
                 
-                response_parts.append(f"{i}. {nome} | {situacao} | {origem} | {data_cad}")
-            response_parts.append("")
+                basic_response_parts.append(f"{i}. {nome} | {situacao} | {origem} | {data_cad}")
+            basic_response_parts.append("")
         
         # Informações técnicas
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        response_parts.extend([
+        basic_response_parts.extend([
             f"Fonte: API CVDW Real | Atualizado: {timestamp}",
             "Status: Dados em tempo real"
         ])
         
-        # Sugestões contextuais
-        suggestions = self._get_contextual_suggestions(query_type)
-        if suggestions:
-            response_parts.append("")
-            response_parts.append("Sugestões de análises:")
-            response_parts.extend([f"• {s}" for s in suggestions])
+        basic_response = "\n".join(basic_response_parts)
         
-        return "\n".join(response_parts)
+        # Melhora com Llama se disponível
+        if self.llama_available and self.llama and len(leads) > 0:
+            try:
+                print("[AGENT] Melhorando resposta com Llama...")
+                enhanced_response = self.llama.enhance_response(query, basic_response, leads)
+                
+                # Adiciona insights de IA se disponíveis
+                ai_insights = self.llama.generate_insights(leads, query_type)
+                if ai_insights:
+                    enhanced_response += "\n\n💡 Insights de IA:\n"
+                    for insight in ai_insights:
+                        enhanced_response += f"• {insight}\n"
+                
+                return enhanced_response
+                
+            except Exception as e:
+                print(f"[AGENT] Erro na melhoria com IA: {str(e)} - usando resposta básica")
+        
+        return basic_response
     
     def _get_contextual_suggestions(self, query_type: str) -> List[str]:
         """Retorna sugestões baseadas no tipo de consulta"""
@@ -242,12 +275,34 @@ Use 'Reconectar' na sidebar para testar novamente."""
             "timestamp": datetime.now().isoformat()
         }
         
+        # Status da API CVDW
         if self.online_mode and self.status and self.status.get("status") == "success":
             status.update({
                 "total_leads_available": self.status.get("total_leads", 0),
                 "api_response_time": "< 5s",
                 "data_freshness": "Real-time"
             })
+        
+        # Status da integração Llama
+        if self.llama:
+            try:
+                llama_status = self.llama.get_status()
+                status["llama_integration"] = {
+                    "available": self.llama_available,
+                    "model": llama_status.get("model", "N/A"),
+                    "model_ready": llama_status.get("model_ready", False),
+                    "enhanced_responses": self.llama_available
+                }
+            except:
+                status["llama_integration"] = {
+                    "available": False,
+                    "error": "Status unavailable"
+                }
+        else:
+            status["llama_integration"] = {
+                "available": False,
+                "message": "Not initialized"
+            }
         
         return status
     

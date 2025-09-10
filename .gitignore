@@ -76,6 +76,11 @@ backups/
 *.sqlite
 *.sqlite3
 
+# CACHE DIÁRIO CVDW
+complete_daily_cache/
+daily_cache/
+cache/
+
 # LOGS E DEBUG
 logs/
 *.log
