@@ -142,8 +142,15 @@ def main():
             st.markdown('<span class="status-offline">🔴 Sistema Offline</span>', unsafe_allow_html=True)
             if st.button("🔄 Reconectar"):
                 if 'agent' in st.session_state:
-                    result = st.session_state.agent.reconnect()
-                    st.info(result)
+                    with st.spinner("Testando reconexão..."):
+                        result = st.session_state.agent.reconnect()
+
+                    if "Reconectado" in result:
+                        st.success(result)
+                        st.balloons()  # Comemoração quando reconectar
+                    else:
+                        st.warning(result)
+
                     st.rerun()
         
         st.divider()
@@ -152,11 +159,11 @@ def main():
         st.subheader("💬 Exemplos")
         
         example_queries = [
-            "Quantos leads temos no total?",
-            "Qual o SDR com maior quantidade de leads?",
-            "Performance por situação", 
-            "Análise de leads por origem",
-            "Leads cadastrados este mês"
+            "Quantos leads, reservas e vendas tivemos no mês anterior?",
+            "Performance do mês anterior por origem",
+            "Qual o SDR com maior quantidade de leads no mês anterior?",
+            "Taxa de conversão do mês anterior fechado",
+            "Análise do mês anterior de vendas e reservas"
         ]
         
         for query in example_queries:
@@ -178,19 +185,27 @@ def main():
         # Inicializa histórico
         if 'chat_history' not in st.session_state:
             st.session_state.chat_history = []
-            
+
             # Mensagem de boas-vindas
             welcome_msg = """Olá! Sou seu Assistente IA conectado à API CVDW.
 
-Posso ajudar você a:
-• Analisar leads reais e performance de marketing
-• Calcular métricas e KPIs atualizados  
-• Identificar melhores origens e campanhas
-• Gerar relatórios baseados nos dados reais
+Vou começar mostrando os dados do mês anterior fechado (análise mais precisa):"""
 
-Como posso ajudar hoje?"""
-            
             st.session_state.chat_history.append(("agent", welcome_msg))
+
+            # Marca que precisa carregar dados iniciais
+            st.session_state.need_initial_data = True
+
+        # Carrega dados iniciais se necessário e agente estiver pronto
+        if (st.session_state.get('need_initial_data', False) and
+            'agent' in st.session_state and
+            st.session_state.get('system_online', False)):
+
+            with st.spinner("Carregando dados do mês anterior fechado..."):
+                auto_response = st.session_state.agent.process_query("Quantos leads, reservas e vendas tivemos no mês anterior?")
+
+            st.session_state.chat_history.append(("agent", auto_response))
+            st.session_state.need_initial_data = False
         
         # Exibe histórico
         for role, message in st.session_state.chat_history:

@@ -198,23 +198,28 @@ class CVDWConnector:
         return self._get_leads_traditional(limit, start_page)
     
     def _get_leads_traditional(self, limit: int, start_page: int) -> Dict[str, Any]:
-        """Método tradicional de coleta (fallback)"""
-        
+        """Método tradicional de coleta (fallback) com ordenação por data"""
+
         # Verifica cache simples
         cache_key = f"leads_{limit}_{start_page}"
         if cache_key in self.simple_cache:
             cached_data = self.simple_cache[cache_key]
             if time.time() - cached_data['timestamp'] < self.cache_timeout:
                 return cached_data['data']
-        
+
+        # ESTRATÉGIA: Buscar mais páginas para garantir dados recentes, depois ordenar
         leads_collected = []
         page = start_page
         records_per_page = min(500, limit)
+        max_pages_to_fetch = min(10, (limit // 100) + 3)  # Busca mais páginas para filtrar depois
         
         try:
-            while len(leads_collected) < limit:
+            pages_fetched = 0
+            while len(leads_collected) < (limit * 2) and pages_fetched < max_pages_to_fetch:  # Busca o dobro para depois filtrar
                 if page > start_page:
                     time.sleep(2)
+
+                pages_fetched += 1
                 
                 response = requests.get(
                     f"{self.base_url}/leads",
@@ -235,7 +240,7 @@ class CVDWConnector:
                         
                         print(f"[CONNECTOR] Página {page}: {len(page_leads)} leads (Total: {len(leads_collected)})")
                         
-                        if len(leads_collected) >= limit or page >= data.get('total_de_paginas', 1):
+                        if len(leads_collected) >= (limit * 2) or page >= data.get('total_de_paginas', 1) or pages_fetched >= max_pages_to_fetch:
                             break
                             
                         page += 1
@@ -253,7 +258,42 @@ class CVDWConnector:
                         "message": f"Erro HTTP {response.status_code}"
                     }
             
-            leads_collected = leads_collected[:limit]
+            # ORDENAÇÃO POR DATA (MAIS RECENTES PRIMEIRO)
+            leads_with_dates = []
+            leads_without_dates = []
+
+            for lead in leads_collected:
+                data_cad = lead.get('data_cad', '')
+                if data_cad:
+                    try:
+                        # Converte data para timestamp para ordenação
+                        if ' ' in data_cad:
+                            date_part = data_cad.split(' ')[0]  # Remove hora se houver
+                        else:
+                            date_part = data_cad
+
+                        from datetime import datetime
+                        date_obj = datetime.strptime(date_part, '%Y-%m-%d')
+                        lead['_date_obj'] = date_obj
+                        leads_with_dates.append(lead)
+                    except:
+                        leads_without_dates.append(lead)
+                else:
+                    leads_without_dates.append(lead)
+
+            # Ordena por data (mais recente primeiro)
+            leads_with_dates.sort(key=lambda x: x['_date_obj'], reverse=True)
+
+            # Remove campo temporário
+            for lead in leads_with_dates:
+                if '_date_obj' in lead:
+                    del lead['_date_obj']
+
+            # Combina: leads com data (ordenados) + leads sem data
+            leads_sorted = leads_with_dates + leads_without_dates
+
+            # Agora sim, pega apenas o limite solicitado
+            leads_collected = leads_sorted[:limit]
             
             result = {
                 "status": "success",
